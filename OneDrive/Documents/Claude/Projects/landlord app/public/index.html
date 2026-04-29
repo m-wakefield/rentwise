@@ -5643,11 +5643,24 @@ async function completeSignup() {
 
   if (error) { showAuthError(errEl, error.message); return; }
 
+  // If session is null, email confirmation is required
+  if (!data.session) {
+    // Show confirmation message on top of current screen
+    const errEl2 = document.getElementById('signup-error');
+    if (errEl2) {
+      errEl2.style.background = '#e8f5e3';
+      errEl2.style.color = '#2d5a27';
+      errEl2.textContent = '✓ Account created! Check your email and click the confirmation link to log in.';
+      errEl2.style.display = 'block';
+    }
+    return;
+  }
+
   // If Pro selected, kick off Stripe checkout after account creation
   if (selectedPlan === 'pro' && data.user) {
     await startStripeCheckout(data.user.id, email, name);
   } else {
-    enterApp();
+    enterApp(data.user, null);
   }
 }
 
