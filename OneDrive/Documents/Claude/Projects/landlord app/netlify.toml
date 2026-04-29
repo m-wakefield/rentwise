@@ -1,0 +1,62 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Install Stripe + Supabase in the functions directory
+[build.environment]
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"
+
+# ── API ROUTES ──
+[[redirects]]
+  from = "/api/claude"
+  to = "/.netlify/functions/claude-proxy"
+  status = 200
+
+[[redirects]]
+  from = "/api/create-checkout"
+  to = "/.netlify/functions/create-checkout"
+  status = 200
+
+[[redirects]]
+  from = "/api/stripe-portal"
+  to = "/.netlify/functions/stripe-portal"
+  status = 200
+
+# Stripe webhook — note: webhooks MUST NOT be redirected through SPA fallback
+[[redirects]]
+  from = "/api/stripe-webhook"
+  to = "/.netlify/functions/stripe-webhook"
+  status = 200
+
+# ── PORTAL ROUTES ──
+# Tenant portal
+[[redirects]]
+  from = "/tenant"
+  to = "/tenant.html"
+  status = 200
+
+# Investor portal
+[[redirects]]
+  from = "/investor"
+  to = "/investor.html"
+  status = 200
+
+# Property Manager portal
+[[redirects]]
+  from = "/pm"
+  to = "/pm.html"
+  status = 200
+
+# ── SECURITY HEADERS ──
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains"
+    Content-Security-Policy = "default-src 'self' https://*.supabase.co https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://api.anthropic.com https://api.stripe.com;"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"

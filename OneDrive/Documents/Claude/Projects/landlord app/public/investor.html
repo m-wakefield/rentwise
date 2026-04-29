@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RentWise — Investor Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --bg:#f5f2ec;--bg2:#ede9e0;--card:#fff;--card2:#faf8f4;
+  --border:#ddd9d0;--ink:#1a1814;--ink2:#4a4640;--muted:#9a9690;
+  --accent:#2d5a27;--accent-light:#e8f0e6;
+  --accent2:#c8570a;--accent2-light:#fdf0e8;
+  --accent3:#1a4a7a;--accent3-light:#e6eef7;
+  --gold:#b8860b;--gold-light:#fdf8e8;
+  --red:#c0392b;--red-light:#fdecea;
+  --shadow:0 2px 12px rgba(26,24,20,0.08);
+  --radius:14px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Bricolage Grotesque',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+.app{display:flex;flex-direction:column;min-height:100vh;}
+.topnav{background:var(--ink);padding:0 24px;display:flex;align-items:center;gap:16px;height:56px;}
+.topnav-logo{font-family:'Instrument Serif',serif;font-size:20px;color:#fff;}
+.topnav-logo span{color:#6fba67;}
+.topnav-badge{font-size:10px;background:var(--accent3);color:#fff;border-radius:4px;padding:2px 7px;font-weight:700;letter-spacing:0.05em;}
+.topnav-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.topnav-user{font-size:13px;color:rgba(255,255,255,0.6);}
+.topnav-btn{font-size:12px;color:rgba(255,255,255,0.5);cursor:pointer;background:none;border:none;font-family:inherit;}
+.topnav-btn:hover{color:#fff;}
+.main{padding:32px 24px;max-width:1100px;margin:0 auto;width:100%;}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;}
+.page-title{font-size:24px;font-weight:700;}
+.page-sub{font-size:14px;color:var(--muted);margin-top:3px;}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px;}
+.card-header{padding:16px 20px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);}
+.card-title{font-size:14px;font-weight:700;}
+.card-body{padding:20px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-bottom:20px;}
+@media(max-width:900px){.grid4{grid-template-columns:repeat(2,1fr);}.grid2{grid-template-columns:1fr;}}
+.kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;}
+.kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px;}
+.kpi-value{font-family:'Instrument Serif',serif;font-size:32px;line-height:1;}
+.kpi-delta{font-size:12px;color:var(--muted);margin-top:4px;}
+.kpi-delta.up{color:var(--accent);}
+.kpi-delta.down{color:var(--red);}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:left;border-bottom:2px solid var(--border);}
+.tbl td{padding:12px 14px;font-size:13px;border-bottom:1px solid var(--border);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--card2);}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px;}
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+.tag-good{background:var(--accent-light);color:var(--accent);}
+.tag-ok{background:var(--gold-light);color:var(--gold);}
+.tag-bad{background:var(--red-light);color:var(--red);}
+.btn{padding:9px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:none;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:#234820;}
+.btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--border);}
+.btn-ghost:hover{background:var(--bg2);}
+
+/* DEAL EVALUATOR */
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:640px){.calc-grid{grid-template-columns:1fr;}}
+.calc-group{margin-bottom:14px;}
+.calc-label{font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px;display:block;}
+.calc-input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:'JetBrains Mono',monospace;background:var(--bg);outline:none;}
+.calc-input:focus{border-color:var(--accent);}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);}
+.result-row:last-child{border-bottom:none;}
+.result-label{font-size:13px;color:var(--ink2);}
+.result-value{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;}
+.result-good{color:var(--accent);}
+.result-bad{color:var(--red);}
+.result-muted{color:var(--muted);}
+
+/* AUTH */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.auth-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:40px;max-width:420px;width:100%;}
+.auth-logo{font-family:'Instrument Serif',serif;font-size:28px;margin-bottom:6px;}
+.auth-logo span{color:var(--accent3);}
+.auth-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+.auth-label{font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink2);display:block;margin-bottom:6px;}
+.auth-input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg);outline:none;margin-bottom:14px;}
+.auth-input:focus{border-color:var(--accent3);}
+.auth-btn{width:100%;padding:13px;background:var(--accent3);color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.auth-btn:hover{background:#123a6a;}
+.auth-error{display:none;background:var(--red-light);color:var(--red);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:12px;}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:500;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<script>
+  const SUPABASE_URL  = 'https://tetcuhdygrdfrcviypcy.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRldGN1aGR5Z3JkZnJjdml5cGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0Njg3NTgsImV4cCI6MjA5MzA0NDc1OH0.KBSbh-094Pzs1w5BPA5GA3dS0O-bO2TwLZXoVB5iTf8';
+  const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+</script>
+
+<!-- AUTH -->
+<div id="auth-screen" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">Rent<span>Wise</span> Investor</div>
+    <div class="auth-sub">Portfolio analytics and deal evaluation for real estate investors</div>
+    <label class="auth-label">Email</label>
+    <input class="auth-input" type="email" id="i-email" placeholder="you@example.com">
+    <label class="auth-label">Password</label>
+    <input class="auth-input" type="password" id="i-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')investorSignIn()">
+    <div class="auth-error" id="i-error"></div>
+    <button class="auth-btn" id="i-signin-btn" onclick="investorSignIn()">Sign in →</button>
+    <div style="margin-top:14px;text-align:center;font-size:13px;color:var(--muted)">
+      Don't have an account? <a href="/index.html" style="color:var(--accent3);font-weight:600">Sign up free</a>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="investor-app" class="app" style="display:none;">
+  <nav class="topnav">
+    <div class="topnav-logo">Rent<span>Wise</span></div>
+    <div class="topnav-badge">Investor</div>
+    <div class="topnav-right">
+      <div class="topnav-user" id="inv-name">—</div>
+      <button class="topnav-btn" onclick="investorSignOut()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Portfolio Overview</div>
+        <div class="page-sub">Real-time analytics across all your holdings</div>
+      </div>
+      <button class="btn btn-primary" onclick="document.getElementById('deal-section').scrollIntoView({behavior:'smooth'})">+ Evaluate a Deal</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid4">
+      <div class="kpi">
+        <div class="kpi-label">Portfolio Value</div>
+        <div class="kpi-value" id="kpi-value">$—</div>
+        <div class="kpi-delta" id="kpi-value-sub">Based on purchase prices</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Monthly Revenue</div>
+        <div class="kpi-value" id="kpi-revenue">$—</div>
+        <div class="kpi-delta up" id="kpi-revenue-sub">Across all properties</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Total Units</div>
+        <div class="kpi-value" id="kpi-units">—</div>
+        <div class="kpi-delta" id="kpi-units-sub">— occupied</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg Cap Rate</div>
+        <div class="kpi-value" id="kpi-cap">—%</div>
+        <div class="kpi-delta" id="kpi-cap-sub">Est. based on rent &amp; price</div>
+      </div>
+    </div>
+
+    <!-- Properties table -->
+    <div class="card">
+      <div class="card-header"><span>🏠</span><div class="card-title">Holdings</div></div>
+      <div class="card-body" style="padding:0;overflow-x:auto">
+        <table class="tbl" id="holdings-table">
+          <thead>
+            <tr>
+              <th>Property</th><th>Units</th><th>Purchase Price</th>
+              <th>Monthly Rent</th><th>Est. Cap Rate</th><th>GRM</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="holdings-body">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">No properties added yet. Add them in the <a href="/index.html" style="color:var(--accent)">landlord dashboard</a>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ROI Analysis -->
+    <div class="grid2">
+      <div class="card">
+        <div class="card-header"><span>📈</span><div class="card-title">Return Analysis</div></div>
+        <div class="card-body" id="roi-panel">
+          <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Add properties to see ROI analysis</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>💡</span><div class="card-title">Portfolio Insights</div></div>
+        <div class="card-body" id="insights-panel">
+          <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Loading insights…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deal Evaluator -->
+    <div class="card" id="deal-section">
+      <div class="card-header"><span>🔍</span><div class="card-title">Deal Evaluator</div><div style="margin-left:auto;font-size:12px;color:var(--muted)">Analyze a potential acquisition</div></div>
+      <div class="card-body">
+        <div class="calc-grid">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)">Property Details</div>
+            <div class="calc-group">
+              <label class="calc-label">Purchase Price ($)</label>
+              <input class="calc-input" id="d-price" value="450000" oninput="evalDeal()">
+            </div>
+            <div class="calc-group">
+              <label class="calc-label">Down Payment (%)</label>
+              <input class="calc-input" id="d-down" value="25" oninput="evalDeal()">
+            </div>
+            <div class="calc-group">
+              <label class="calc-label">Interest Rate (%)</label>
+              <input class="calc-input" id="d-rate" value="7.5" oninput="evalDeal()">
+            </div>
+            <div class="calc-group">
+              <label class="calc-label">Loan Term (years)</label>
+              <input class="calc-input" id="d-term" value="30" oninput="evalDeal()">
+            </div>
+            <div style="font-size:13px;font-weight:700;color:var(--ink2);margin:16px 0;padding-bottom:8px;border-bottom:1px solid var(--border)">Income</div>
+            <div class="calc-group">
+              <label class="calc-label">Monthly Rent ($)</label>
+              <input class="calc-input" id="d-rent" value="3200" oninput="evalDeal()">
+            </div>
+            <div class="calc-group">
+              <label class="calc-label">Number of Units</label>
+              <input class="calc-input" id="d-units" value="4" oninput="evalDeal()">
+            </div>
+            <div class="calc-group">
+              <label class="calc-label">Vacancy Rate (%)</label>
+              <input class="calc-input" id="d-vac" value="8" oninput="evalDeal()">
+            </div>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)">Expenses ($/month)</div>
+            <div class="calc-group">
+              <label class="calc-label">Property Tax</label>
+              <input class="calc-input" id="d-tax" value="620" oninput="evalDeal()">
+            </div>
+            <div class="calc-group">
+              <label class="calc-label">Insurance</label>
+              <input class="calc-input" id="d-ins" value="180" oninput="evalDeal()">
+            </div>
+            <div class="calc-group">
+              <label class="calc-label">Maintenance</label>
+              <input class="calc-input" id="d-maint" value="300" oninput="evalDeal()">
+            </div>
+            <div class="calc-group">
+              <label class="calc-label">Property Management (%)</label>
+              <input class="calc-input" id="d-mgmt" value="0" oninput="evalDeal()">
+            </div>
+            <div class="calc-group">
+              <label class="calc-label">CapEx Reserve</label>
+              <input class="calc-input" id="d-capex" value="150" oninput="evalDeal()">
+            </div>
+
+            <div style="font-size:13px;font-weight:700;color:var(--ink2);margin:20px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)">Results</div>
+            <div id="deal-results">
+              <div class="result-row"><span class="result-label">Gross Monthly Income</span><span class="result-value" id="r-gmi">—</span></div>
+              <div class="result-row"><span class="result-label">Monthly Mortgage</span><span class="result-value result-bad" id="r-mort">—</span></div>
+              <div class="result-row"><span class="result-label">Total Monthly Expenses</span><span class="result-value result-bad" id="r-exp">—</span></div>
+              <div class="result-row"><span class="result-label">Net Operating Income</span><span class="result-value" id="r-noi">—</span></div>
+              <div class="result-row"><span class="result-label">Monthly Cash Flow</span><span class="result-value" id="r-cf">—</span></div>
+              <div class="result-row"><span class="result-label">Cap Rate</span><span class="result-value" id="r-cap">—</span></div>
+              <div class="result-row"><span class="result-label">Cash-on-Cash Return</span><span class="result-value" id="r-coc">—</span></div>
+              <div class="result-row" style="border:none"><span class="result-label">GRM</span><span class="result-value" id="r-grm">—</span></div>
+            </div>
+          </div>
+        </div>
+        <div id="deal-verdict" style="margin-top:20px;padding:16px;border-radius:10px;background:var(--bg2);font-size:13px;line-height:1.6"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let _invUser = null;
+
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type === 'error' ? 'var(--red)' : type === 'success' ? 'var(--accent)' : 'var(--ink)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+async function investorSignIn() {
+  const email = document.getElementById('i-email').value.trim();
+  const pass  = document.getElementById('i-pass').value;
+  const errEl = document.getElementById('i-error');
+  const btn   = document.getElementById('i-signin-btn');
+  if (!email || !pass) { errEl.textContent='Enter email and password'; errEl.style.display='block'; return; }
+  btn.textContent = 'Signing in…'; btn.disabled = true;
+  const { error } = await _supabase.auth.signInWithPassword({ email, password: pass });
+  btn.textContent = 'Sign in →'; btn.disabled = false;
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; }
+}
+async function investorSignOut() {
+  await _supabase.auth.signOut(); window.location.reload();
+}
+
+async function loadInvestorData(user) {
+  _invUser = user;
+  const name = user.user_metadata?.full_name || user.email.split('@')[0];
+  document.getElementById('inv-name').textContent = name;
+
+  const { data: props } = await _supabase.from('properties').select('*').eq('owner_id', user.id);
+  const { data: tenants } = await _supabase.from('tenants').select('rent_amount,status').eq('landlord_id', user.id);
+
+  if (!props?.length) return;
+
+  const totalValue   = props.reduce((s,p) => s + (p.purchase_price || 0), 0);
+  const totalUnits   = props.reduce((s,p) => s + (p.units || 0), 0);
+  const monthlyRev   = tenants?.filter(t=>t.status==='active').reduce((s,t)=>s+(t.rent_amount||0),0) || 0;
+  const annualRev    = monthlyRev * 12;
+  const avgCapRate   = totalValue > 0 ? ((annualRev * 0.65) / totalValue * 100).toFixed(1) : '—';
+
+  document.getElementById('kpi-value').textContent    = totalValue ? `$${(totalValue/1e6).toFixed(2)}M` : '$—';
+  document.getElementById('kpi-revenue').textContent  = `$${monthlyRev.toLocaleString()}`;
+  document.getElementById('kpi-units').textContent    = totalUnits;
+  document.getElementById('kpi-units-sub').textContent = `${tenants?.filter(t=>t.status==='active').length || 0} occupied`;
+  document.getElementById('kpi-cap').textContent      = `${avgCapRate}%`;
+
+  // Holdings table
+  const tbody = document.getElementById('holdings-body');
+  const propRents = {};
+  tenants?.forEach(t => { /* simplified — per-property rent would need join */ });
+
+  tbody.innerHTML = props.map(p => {
+    const annualRentEst = (p.rent_estimate || 0) * p.units * 12;
+    const capRate = p.purchase_price && annualRentEst
+      ? ((annualRentEst * 0.65 / p.purchase_price) * 100).toFixed(1)
+      : '—';
+    const grm = p.purchase_price && p.rent_estimate
+      ? (p.purchase_price / (p.rent_estimate * p.units * 12)).toFixed(1)
+      : '—';
+    const capNum = parseFloat(capRate);
+    const capTag = isNaN(capNum) ? 'tag-ok' : capNum >= 7 ? 'tag-good' : capNum >= 5 ? 'tag-ok' : 'tag-bad';
+    return `<tr>
+      <td><div style="font-weight:600">${p.name || p.address}</div><div style="font-size:11px;color:var(--muted)">${p.city||''}, ${p.state||''}</div></td>
+      <td class="mono">${p.units}</td>
+      <td class="mono">${p.purchase_price ? '$'+p.purchase_price.toLocaleString() : '—'}</td>
+      <td class="mono">${p.rent_estimate ? '$'+(p.rent_estimate*p.units).toLocaleString()+'/mo' : '—'}</td>
+      <td><span class="tag ${capTag}">${capRate}%</span></td>
+      <td class="mono">${grm}x</td>
+      <td><span class="tag tag-good">Active</span></td>
+    </tr>`;
+  }).join('');
+
+  // Insights
+  const insights = [];
+  if (avgCapRate !== '—' && parseFloat(avgCapRate) < 5) insights.push('⚠️ Portfolio cap rate is below 5% — consider optimizing rents or reducing expenses.');
+  if (props.some(p => !p.purchase_price)) insights.push('💡 Add purchase prices to your properties for accurate ROI tracking.');
+  if (monthlyRev === 0) insights.push('💡 Add rent amounts to your tenants for revenue tracking.');
+  insights.push('📊 Pro tip: A GRM under 12 generally indicates a good buy in most markets.');
+  insights.push('🔄 Reinvesting 15–20% of NOI into CapEx reserves helps protect long-term equity.');
+
+  document.getElementById('insights-panel').innerHTML = insights.map(i => `<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.6">${i}</div>`).join('');
+
+  // ROI
+  if (totalValue > 0 && monthlyRev > 0) {
+    const annIncome = monthlyRev * 12;
+    const estNOI    = annIncome * 0.65;
+    const estEquity = totalValue * 0.20; // assume 20% equity
+    const coc       = estEquity > 0 ? ((estNOI - (annIncome * 0.35)) / estEquity * 100).toFixed(1) : '—';
+    document.getElementById('roi-panel').innerHTML = `
+      <div class="result-row"><span class="result-label">Annual Gross Revenue</span><span class="result-value result-good">$${annIncome.toLocaleString()}</span></div>
+      <div class="result-row"><span class="result-label">Est. Annual NOI (65% margin)</span><span class="result-value result-good">$${Math.round(estNOI).toLocaleString()}</span></div>
+      <div class="result-row"><span class="result-label">Portfolio Cap Rate</span><span class="result-value">${avgCapRate}%</span></div>
+      <div class="result-row"><span class="result-label">Est. Cash-on-Cash</span><span class="result-value">${coc}%</span></div>
+      <div class="result-row" style="border:none"><span class="result-label">Total Properties</span><span class="result-value">${props.length}</span></div>`;
+  }
+
+  evalDeal();
+}
+
+// ── DEAL EVALUATOR ──
+function evalDeal() {
+  const price  = parseFloat(document.getElementById('d-price').value) || 0;
+  const down   = parseFloat(document.getElementById('d-down').value) / 100 || 0.25;
+  const rate   = parseFloat(document.getElementById('d-rate').value) / 100 / 12 || 0.075/12;
+  const term   = parseFloat(document.getElementById('d-term').value) * 12 || 360;
+  const rent   = parseFloat(document.getElementById('d-rent').value) || 0;
+  const units  = parseFloat(document.getElementById('d-units').value) || 1;
+  const vac    = parseFloat(document.getElementById('d-vac').value) / 100 || 0.08;
+  const tax    = parseFloat(document.getElementById('d-tax').value) || 0;
+  const ins    = parseFloat(document.getElementById('d-ins').value) || 0;
+  const maint  = parseFloat(document.getElementById('d-maint').value) || 0;
+  const mgmt   = parseFloat(document.getElementById('d-mgmt').value) / 100 || 0;
+  const capex  = parseFloat(document.getElementById('d-capex').value) || 0;
+
+  const loan    = price * (1 - down);
+  const dp      = price * down;
+  const mort    = rate > 0 ? loan * (rate * Math.pow(1+rate,term)) / (Math.pow(1+rate,term)-1) : 0;
+  const gmi     = rent * units * (1 - vac);
+  const mgmtAmt = gmi * mgmt;
+  const opex    = tax + ins + maint + mgmtAmt + capex;
+  const noi     = gmi - opex;
+  const cf      = noi - mort;
+  const capRate = price > 0 ? (noi * 12 / price * 100) : 0;
+  const coc     = dp > 0 ? (cf * 12 / dp * 100) : 0;
+  const grm     = gmi > 0 ? (price / (gmi * 12)) : 0;
+
+  const fmt = n => '$' + Math.round(Math.abs(n)).toLocaleString();
+  const clr = n => n >= 0 ? 'result-good' : 'result-bad';
+
+  document.getElementById('r-gmi').textContent  = fmt(gmi);
+  document.getElementById('r-gmi').className    = `result-value ${clr(gmi)}`;
+  document.getElementById('r-mort').textContent = fmt(mort);
+  document.getElementById('r-exp').textContent  = fmt(opex + mort);
+  document.getElementById('r-noi').textContent  = fmt(noi);
+  document.getElementById('r-noi').className    = `result-value ${clr(noi)}`;
+  document.getElementById('r-cf').textContent   = (cf >= 0 ? '+' : '-') + fmt(cf);
+  document.getElementById('r-cf').className     = `result-value ${clr(cf)}`;
+  document.getElementById('r-cap').textContent  = capRate.toFixed(2) + '%';
+  document.getElementById('r-cap').className    = `result-value ${capRate >= 6 ? 'result-good' : capRate >= 4 ? '' : 'result-bad'}`;
+  document.getElementById('r-coc').textContent  = coc.toFixed(2) + '%';
+  document.getElementById('r-coc').className    = `result-value ${coc >= 8 ? 'result-good' : coc >= 4 ? '' : 'result-bad'}`;
+  document.getElementById('r-grm').textContent  = grm.toFixed(1) + 'x';
+
+  // Verdict
+  const verdicts = [];
+  if (cf >= 200)      verdicts.push(`✅ Strong cash flow of ${(cf >= 0 ? '+' : '')}$${Math.round(cf)}/mo ($${Math.round(cf*12).toLocaleString()}/yr).`);
+  else if (cf >= 0)   verdicts.push(`⚠️ Thin cash flow of +$${Math.round(cf)}/mo — any vacancy or expense spike hurts.`);
+  else                verdicts.push(`❌ Negative cash flow of -$${Math.round(Math.abs(cf))}/mo — this deal loses money as-is.`);
+  if (capRate >= 7)   verdicts.push(`✅ Cap rate of ${capRate.toFixed(1)}% is strong.`);
+  else if (capRate >= 5) verdicts.push(`⚠️ Cap rate of ${capRate.toFixed(1)}% is acceptable but below 7% target.`);
+  else                verdicts.push(`❌ Cap rate of ${capRate.toFixed(1)}% is below typical investment thresholds.`);
+  if (grm < 10)       verdicts.push(`✅ GRM of ${grm.toFixed(1)}x is attractive — under 10 is generally favorable.`);
+  else if (grm < 15)  verdicts.push(`⚠️ GRM of ${grm.toFixed(1)}x — acceptable depending on market.`);
+  else                verdicts.push(`❌ GRM of ${grm.toFixed(1)}x is high — price is steep relative to rents.`);
+
+  document.getElementById('deal-verdict').innerHTML = verdicts.map(v => `<div style="margin-bottom:6px">${v}</div>`).join('');
+}
+
+// ── AUTH STATE ──
+_supabase.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    document.getElementById('auth-screen').style.display   = 'none';
+    document.getElementById('investor-app').style.display  = 'flex';
+    await loadInvestorData(session.user);
+  } else {
+    document.getElementById('auth-screen').style.display   = 'flex';
+    document.getElementById('investor-app').style.display  = 'none';
+  }
+});
+
+evalDeal(); // run once with defaults
+</script>
+</body>
+</html>

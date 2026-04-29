@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RentWise — Property Manager Portal</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --bg:#f5f2ec;--bg2:#ede9e0;--card:#fff;--card2:#faf8f4;
+  --border:#ddd9d0;--ink:#1a1814;--ink2:#4a4640;--muted:#9a9690;
+  --accent:#2d5a27;--accent-light:#e8f0e6;
+  --accent2:#c8570a;--accent2-light:#fdf0e8;
+  --accent3:#1a4a7a;--accent3-light:#e6eef7;
+  --gold:#b8860b;--gold-light:#fdf8e8;
+  --red:#c0392b;--red-light:#fdecea;
+  --shadow:0 2px 12px rgba(26,24,20,0.08);
+  --radius:14px;--radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Bricolage Grotesque',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+
+/* AUTH */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.auth-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:40px;max-width:420px;width:100%;}
+.auth-logo{font-family:'Instrument Serif',serif;font-size:28px;margin-bottom:6px;}
+.auth-logo span{color:var(--accent2);}
+.auth-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+.auth-label{font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink2);display:block;margin-bottom:6px;}
+.auth-input{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;background:var(--bg);outline:none;margin-bottom:14px;}
+.auth-input:focus{border-color:var(--accent2);}
+.auth-btn{width:100%;padding:13px;background:var(--accent2);color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.auth-btn:hover{opacity:0.88;}
+.auth-error{display:none;background:var(--red-light);color:var(--red);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:12px;}
+
+/* APP */
+.app-shell{display:flex;height:100vh;overflow:hidden;}
+.sidebar{width:220px;min-width:220px;background:var(--ink);display:flex;flex-direction:column;padding:0;overflow-y:auto;}
+.sidebar-logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:8px;}
+.logo-mark{font-family:'Instrument Serif',serif;font-size:20px;color:#fff;}
+.logo-mark span{color:#f0a070;}
+.logo-sub{font-size:9px;color:rgba(255,255,255,0.35);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px;font-family:'JetBrains Mono',monospace;}
+.nav-section-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.3);padding:14px 18px 6px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;color:rgba(255,255,255,0.55);font-size:13px;font-weight:500;cursor:pointer;border-radius:8px;margin:0 8px 2px;transition:background 0.15s;}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+.nav-item.active{background:rgba(255,255,255,0.12);color:#fff;}
+.nav-icon{font-size:15px;width:20px;text-align:center;}
+.sidebar-footer{margin-top:auto;padding:16px 18px;border-top:1px solid rgba(255,255,255,0.08);}
+.sidebar-user{font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px;word-break:break-all;}
+.sidebar-signout{font-size:12px;color:rgba(255,255,255,0.35);cursor:pointer;background:none;border:none;font-family:inherit;padding:0;}
+.sidebar-signout:hover{color:#fff;}
+
+.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{padding:12px 24px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.topbar-title{font-size:16px;font-weight:700;}
+.topbar-sub{font-size:12px;color:var(--muted);margin-top:1px;}
+.topbar-actions{margin-left:auto;display:flex;gap:10px;}
+.content{flex:1;overflow-y:auto;padding:24px;}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px;}
+@media(max-width:900px){.grid3{grid-template-columns:repeat(2,1fr);}.grid2{grid-template-columns:1fr;}}
+
+.kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;}
+.kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:6px;}
+.kpi-value{font-family:'Instrument Serif',serif;font-size:28px;}
+.kpi-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px;}
+.card-header{padding:14px 20px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);}
+.card-title{font-size:14px;font-weight:700;}
+.card-body{padding:20px;}
+
+.client-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.client-row:last-child{border-bottom:none;}
+.client-row:hover{background:var(--card2);margin:0 -20px;padding-left:20px;padding-right:20px;}
+.client-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;flex-shrink:0;}
+.client-name{font-size:14px;font-weight:600;}
+.client-sub{font-size:11px;color:var(--muted);}
+.client-stat{margin-left:auto;text-align:right;}
+.client-stat-val{font-size:14px;font-weight:700;color:var(--accent);}
+.client-stat-sub{font-size:11px;color:var(--muted);}
+
+.maint-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+.maint-row:last-child{border-bottom:none;}
+.priority-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.p-urgent{background:var(--red);}
+.p-high{background:var(--accent2);}
+.p-medium{background:var(--gold);}
+.p-low{background:var(--accent);}
+.maint-title{font-size:13px;font-weight:600;}
+.maint-meta{font-size:11px;color:var(--muted);}
+.status-badge{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+.s-open{background:var(--red-light);color:var(--red);}
+.s-progress{background:var(--gold-light);color:var(--gold);}
+.s-resolved{background:var(--accent-light);color:var(--accent);}
+
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{padding:9px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:left;border-bottom:2px solid var(--border);}
+.tbl td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--border);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--card2);}
+
+.screen{display:none;}
+.screen.active{display:block;}
+
+.btn{padding:8px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:none;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:var(--accent2);color:#fff;}
+.btn-primary:hover{opacity:0.88;}
+.btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--border);}
+.btn-ghost:hover{background:var(--bg2);}
+.btn-sm{padding:5px 10px;font-size:12px;}
+
+.toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:500;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<script>
+  const SUPABASE_URL  = 'https://tetcuhdygrdfrcviypcy.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRldGN1aGR5Z3JkZnJjdml5cGN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0Njg3NTgsImV4cCI6MjA5MzA0NDc1OH0.KBSbh-094Pzs1w5BPA5GA3dS0O-bO2TwLZXoVB5iTf8';
+  const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+</script>
+
+<!-- AUTH -->
+<div id="auth-screen" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">Rent<span>Wise</span> PM</div>
+    <div class="auth-sub">Property Manager portal — manage multiple owner portfolios from one workspace</div>
+    <label class="auth-label">Email</label>
+    <input class="auth-input" type="email" id="pm-email" placeholder="you@company.com">
+    <label class="auth-label">Password</label>
+    <input class="auth-input" type="password" id="pm-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')pmSignIn()">
+    <div class="auth-error" id="pm-error"></div>
+    <button class="auth-btn" id="pm-signin-btn" onclick="pmSignIn()">Sign in to PM Portal →</button>
+    <div style="margin-top:14px;text-align:center;font-size:13px;color:var(--muted)">
+      New? <a href="/index.html" style="color:var(--accent2);font-weight:600">Create a PM account</a>
+    </div>
+  </div>
+</div>
+
+<!-- PM APP -->
+<div id="pm-app" class="app-shell" style="display:none;">
+
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">Rent<span>Wise</span></div>
+      <div class="logo-sub">PM Portal</div>
+    </div>
+
+    <div class="nav-section-title">Overview</div>
+    <div class="nav-item active" onclick="showPMScreen('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
+    <div class="nav-item" onclick="showPMScreen('clients')"><span class="nav-icon">👥</span>Clients</div>
+
+    <div class="nav-section-title">Operations</div>
+    <div class="nav-item" onclick="showPMScreen('maintenance')"><span class="nav-icon">🔧</span>Maintenance Queue</div>
+    <div class="nav-item" onclick="showPMScreen('tenants')"><span class="nav-icon">🪑</span>All Tenants</div>
+    <div class="nav-item" onclick="showPMScreen('payments')"><span class="nav-icon">💰</span>Payments</div>
+
+    <div class="nav-section-title">Tools</div>
+    <div class="nav-item" onclick="showPMScreen('reports')"><span class="nav-icon">📄</span>Reports</div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user" id="pm-user-display">—</div>
+      <button class="sidebar-signout" onclick="pmSignOut()">Sign out →</button>
+    </div>
+  </div>
+
+  <div class="main-area">
+
+    <!-- DASHBOARD -->
+    <div id="pmscreen-dashboard" class="screen active">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">PM Dashboard</div>
+          <div class="topbar-sub" id="pm-date-sub">—</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="grid3">
+          <div class="kpi"><div class="kpi-label">Total Units Managed</div><div class="kpi-value" id="pm-kpi-units">—</div><div class="kpi-sub">Across all clients</div></div>
+          <div class="kpi"><div class="kpi-label">Active Tenants</div><div class="kpi-value" id="pm-kpi-tenants">—</div><div class="kpi-sub" id="pm-kpi-late">— late</div></div>
+          <div class="kpi"><div class="kpi-label">Open Maintenance</div><div class="kpi-value" id="pm-kpi-maint">—</div><div class="kpi-sub" id="pm-kpi-urgent">— urgent</div></div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <div class="card-header"><span>🔧</span><div class="card-title">Urgent Maintenance</div></div>
+            <div class="card-body" id="pm-urgent-list">
+              <div style="text-align:center;color:var(--muted);font-size:13px;padding:12px">Loading…</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span>💰</span><div class="card-title">Late Rent Alerts</div></div>
+            <div class="card-body" id="pm-late-list">
+              <div style="text-align:center;color:var(--muted);font-size:13px;padding:12px">Loading…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLIENTS -->
+    <div id="pmscreen-clients" class="screen">
+      <div class="topbar">
+        <div><div class="topbar-title">Clients</div><div class="topbar-sub">Property owners you manage on behalf of</div></div>
+        <div class="topbar-actions">
+          <button class="btn btn-ghost btn-sm">+ Invite Client</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="card">
+          <div class="card-header"><span>👥</span><div class="card-title">Client Portfolios</div></div>
+          <div class="card-body" id="pm-clients-body">
+            <div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">
+              <div style="font-size:32px;margin-bottom:12px">👥</div>
+              <div style="font-weight:600;margin-bottom:6px">No clients yet</div>
+              <div>When property owners add you as their PM in their landlord settings, they'll appear here.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAINTENANCE QUEUE -->
+    <div id="pmscreen-maintenance" class="screen">
+      <div class="topbar">
+        <div><div class="topbar-title">Maintenance Queue</div><div class="topbar-sub">All open requests across all managed properties</div></div>
+      </div>
+      <div class="content">
+        <div class="card">
+          <div class="card-header"><span>🔧</span><div class="card-title">All Open Requests</div></div>
+          <div class="card-body" id="pm-all-maintenance">
+            <div style="text-align:center;color:var(--muted);font-size:13px;padding:32px">Loading…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALL TENANTS -->
+    <div id="pmscreen-tenants" class="screen">
+      <div class="topbar">
+        <div><div class="topbar-title">All Tenants</div><div class="topbar-sub">Every tenant across all managed properties</div></div>
+      </div>
+      <div class="content">
+        <div class="card">
+          <div class="card-body" style="padding:0;overflow-x:auto">
+            <table class="tbl">
+              <thead>
+                <tr><th>Tenant</th><th>Property / Unit</th><th>Rent</th><th>Status</th><th>Lease End</th><th>Health</th></tr>
+              </thead>
+              <tbody id="pm-all-tenants">
+                <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div id="pmscreen-payments" class="screen">
+      <div class="topbar">
+        <div><div class="topbar-title">Payment Overview</div><div class="topbar-sub">Rent collection status across all properties</div></div>
+      </div>
+      <div class="content">
+        <div class="grid3">
+          <div class="kpi"><div class="kpi-label">Total Rent Roll</div><div class="kpi-value" id="pm-pay-total">$—</div><div class="kpi-sub">Monthly</div></div>
+          <div class="kpi"><div class="kpi-label">Collected</div><div class="kpi-value" id="pm-pay-collected" style="color:var(--accent)">$—</div><div class="kpi-sub" id="pm-pay-pct">—% collected</div></div>
+          <div class="kpi"><div class="kpi-label">Outstanding</div><div class="kpi-value" id="pm-pay-outstanding" style="color:var(--red)">$—</div><div class="kpi-sub">Late or due</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>💰</span><div class="card-title">All Payments This Month</div></div>
+          <div class="card-body" style="padding:0;overflow-x:auto">
+            <table class="tbl">
+              <thead><tr><th>Tenant</th><th>Property</th><th>Amount</th><th>Due</th><th>Status</th></tr></thead>
+              <tbody id="pm-payments-table">
+                <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div id="pmscreen-reports" class="screen">
+      <div class="topbar">
+        <div><div class="topbar-title">Reports</div><div class="topbar-sub">Generate owner reports and performance summaries</div></div>
+      </div>
+      <div class="content">
+        <div class="grid2">
+          <div class="card" style="cursor:pointer" onclick="showToast('Report generation coming soon!','info')">
+            <div class="card-body" style="text-align:center;padding:32px">
+              <div style="font-size:36px;margin-bottom:12px">📊</div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:6px">Monthly Owner Report</div>
+              <div style="font-size:13px;color:var(--muted)">Revenue, expenses, occupancy, and maintenance summary per owner</div>
+            </div>
+          </div>
+          <div class="card" style="cursor:pointer" onclick="showToast('Report generation coming soon!','info')">
+            <div class="card-body" style="text-align:center;padding:32px">
+              <div style="font-size:36px;margin-bottom:12px">💵</div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:6px">Rent Roll Report</div>
+              <div style="font-size:13px;color:var(--muted)">All tenants, units, rents, and payment statuses for a given month</div>
+            </div>
+          </div>
+          <div class="card" style="cursor:pointer" onclick="showToast('Report generation coming soon!','info')">
+            <div class="card-body" style="text-align:center;padding:32px">
+              <div style="font-size:36px;margin-bottom:12px">🔧</div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:6px">Maintenance Report</div>
+              <div style="font-size:13px;color:var(--muted)">Open, in-progress, and resolved tickets with costs and vendor info</div>
+            </div>
+          </div>
+          <div class="card" style="cursor:pointer" onclick="showToast('Report generation coming soon!','info')">
+            <div class="card-body" style="text-align:center;padding:32px">
+              <div style="font-size:36px;margin-bottom:12px">📋</div>
+              <div style="font-size:15px;font-weight:700;margin-bottom-6px">Delinquency Report</div>
+              <div style="font-size:13px;color:var(--muted)">All late and non-paying tenants with days overdue and amounts owed</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let _pmUser = null;
+
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type === 'error' ? 'var(--red)' : type === 'success' ? 'var(--accent)' : 'var(--ink)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function showPMScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('pmscreen-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+async function pmSignIn() {
+  const email = document.getElementById('pm-email').value.trim();
+  const pass  = document.getElementById('pm-pass').value;
+  const errEl = document.getElementById('pm-error');
+  const btn   = document.getElementById('pm-signin-btn');
+  if (!email || !pass) { errEl.textContent='Enter email and password'; errEl.style.display='block'; return; }
+  btn.textContent = 'Signing in…'; btn.disabled = true;
+  const { error } = await _supabase.auth.signInWithPassword({ email, password: pass });
+  btn.textContent = 'Sign in to PM Portal →'; btn.disabled = false;
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; }
+}
+
+async function pmSignOut() {
+  await _supabase.auth.signOut(); window.location.reload();
+}
+
+async function loadPMData(user) {
+  _pmUser = user;
+  const name = user.user_metadata?.full_name || user.email.split('@')[0];
+  document.getElementById('pm-user-display').textContent = name;
+  document.getElementById('pm-date-sub').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+  // For a PM, they see properties where they're set as the PM
+  // In this MVP, we load all properties owned by this user (they manage their own and linked portfolios)
+  const { data: props }    = await _supabase.from('properties').select('*').eq('owner_id', user.id);
+  const { data: tenants }  = await _supabase.from('tenants').select('*, properties(address,city)').eq('landlord_id', user.id);
+  const { data: mainList } = await _supabase.from('maintenance').select('*, properties(address), tenants(first_name,last_name)').eq('landlord_id', user.id).neq('status','resolved').order('created_at', { ascending: false });
+  const { data: payments } = await _supabase.from('payments').select('*, tenants(first_name,last_name,property_id), properties(address)').eq('landlord_id', user.id).order('due_date', { ascending: false }).limit(50);
+
+  const totalUnits    = (props || []).reduce((s,p) => s+(p.units||0), 0);
+  const activeTenants = (tenants || []).filter(t => t.status === 'active');
+  const lateTenants   = activeTenants.filter(t => t.payment_status === 'late');
+  const openMaint     = (mainList || []).filter(m => m.status !== 'resolved');
+  const urgentMaint   = openMaint.filter(m => m.priority === 'urgent');
+
+  document.getElementById('pm-kpi-units').textContent     = totalUnits;
+  document.getElementById('pm-kpi-tenants').textContent   = activeTenants.length;
+  document.getElementById('pm-kpi-late').textContent      = `${lateTenants.length} late`;
+  document.getElementById('pm-kpi-maint').textContent     = openMaint.length;
+  document.getElementById('pm-kpi-urgent').textContent    = `${urgentMaint.length} urgent`;
+
+  // Urgent maintenance
+  const urgEl = document.getElementById('pm-urgent-list');
+  if (!urgentMaint.length) {
+    urgEl.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px">No urgent issues 🎉</div>';
+  } else {
+    urgEl.innerHTML = urgentMaint.slice(0,5).map(m => `
+      <div class="maint-row">
+        <div class="priority-dot p-${m.priority}"></div>
+        <div style="flex:1">
+          <div class="maint-title">${m.title}</div>
+          <div class="maint-meta">${m.properties?.address || '—'} · ${m.tenants ? m.tenants.first_name+' '+m.tenants.last_name : 'Unknown tenant'}</div>
+        </div>
+        <span class="status-badge s-open">${m.priority}</span>
+      </div>`).join('');
+  }
+
+  // Late rent
+  const lateEl = document.getElementById('pm-late-list');
+  if (!lateTenants.length) {
+    lateEl.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px">All rent is current 🎉</div>';
+  } else {
+    lateEl.innerHTML = lateTenants.slice(0,5).map(t => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${t.first_name} ${t.last_name}</div>
+          <div style="font-size:11px;color:var(--muted)">${t.properties?.address || '—'} · Unit ${t.unit}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:700;color:var(--red)">$${(t.rent_amount||0).toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--muted)">overdue</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // All tenants table
+  const tbody = document.getElementById('pm-all-tenants');
+  if (!activeTenants.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">No tenants yet</td></tr>';
+  } else {
+    const hs = s => s >= 80 ? '#2d5a27' : s >= 65 ? '#b8860b' : '#c0392b';
+    tbody.innerHTML = activeTenants.map(t => `
+      <tr>
+        <td><div style="font-weight:600">${t.first_name} ${t.last_name}</div><div style="font-size:11px;color:var(--muted)">${t.email||''}</div></td>
+        <td><div>${t.properties?.address||'—'}</div><div style="font-size:11px;color:var(--muted)">Unit ${t.unit||'—'}</div></td>
+        <td style="font-family:'JetBrains Mono',monospace">$${(t.rent_amount||0).toLocaleString()}</td>
+        <td><span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:${t.payment_status==='late'?'var(--red-light)':'var(--accent-light)'};color:${t.payment_status==='late'?'var(--red)':'var(--accent)'}">${t.payment_status||'current'}</span></td>
+        <td style="font-size:12px;color:var(--muted)">${t.lease_end ? new Date(t.lease_end).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</td>
+        <td><span style="font-weight:700;font-family:'JetBrains Mono',monospace;color:${hs(t.health_score||75)}">${t.health_score||'—'}</span></td>
+      </tr>`).join('');
+  }
+
+  // All maintenance
+  const allMEl = document.getElementById('pm-all-maintenance');
+  if (!openMaint.length) {
+    allMEl.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:32px">No open maintenance requests 🎉</div>';
+  } else {
+    allMEl.innerHTML = openMaint.map(m => `
+      <div class="maint-row">
+        <div class="priority-dot p-${m.priority}"></div>
+        <div style="flex:1">
+          <div class="maint-title">${m.title}</div>
+          <div class="maint-meta">${m.properties?.address||'—'} · ${m.tenants?m.tenants.first_name+' '+m.tenants.last_name:'—'} · ${new Date(m.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>
+          ${m.description?`<div style="font-size:12px;color:var(--ink2);margin-top:4px">${m.description}</div>`:''}
+        </div>
+        <span class="status-badge ${m.status==='in_progress'?'s-progress':'s-open'}">${m.status.replace('_',' ')}</span>
+      </div>`).join('');
+  }
+
+  // Payments
+  const rentRoll    = activeTenants.reduce((s,t) => s+(t.rent_amount||0), 0);
+  const paidPayments = (payments||[]).filter(p => p.status === 'paid');
+  const collected   = paidPayments.reduce((s,p) => s+p.amount, 0);
+  const outstanding = rentRoll - collected;
+  document.getElementById('pm-pay-total').textContent       = '$'+rentRoll.toLocaleString();
+  document.getElementById('pm-pay-collected').textContent   = '$'+collected.toLocaleString();
+  document.getElementById('pm-pay-outstanding').textContent = '$'+Math.max(0,outstanding).toLocaleString();
+  document.getElementById('pm-pay-pct').textContent         = rentRoll ? Math.round(collected/rentRoll*100)+'% collected' : '—';
+
+  const payTbl = document.getElementById('pm-payments-table');
+  if (!(payments||[]).length) {
+    payTbl.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">No payment records yet</td></tr>';
+  } else {
+    const scls = s => s==='paid'?'color:var(--accent)':s==='late'?'color:var(--red)':'color:var(--gold)';
+    payTbl.innerHTML = payments.slice(0,20).map(p => `
+      <tr>
+        <td>${p.tenants?p.tenants.first_name+' '+p.tenants.last_name:'—'}</td>
+        <td style="font-size:12px;color:var(--muted)">${p.properties?.address||'—'}</td>
+        <td style="font-family:'JetBrains Mono',monospace">$${p.amount.toLocaleString()}</td>
+        <td style="font-size:12px;color:var(--muted)">${p.due_date?new Date(p.due_date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—'}</td>
+        <td><span style="font-weight:700;font-size:12px;${scls(p.status)}">${p.status}</span></td>
+      </tr>`).join('');
+  }
+}
+
+// ── AUTH STATE ──
+_supabase.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('pm-app').style.display      = 'flex';
+    await loadPMData(session.user);
+  } else {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('pm-app').style.display      = 'none';
+  }
+});
+</script>
+</body>
+</html>
