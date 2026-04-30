@@ -5061,6 +5061,12 @@ renderProperties();
 const PRO_SCREENS = new Set(['listings','profitability','reports','rentalanalysis','marketing','creditboost']);
 
 function showScreen(name) {
+  // Hard auth guard — never show app content without a verified user
+  if (!_currentUser) {
+    document.getElementById('app-shell').style.display = 'none';
+    document.getElementById('auth-login').style.display = 'flex';
+    return;
+  }
   // Gate Pro screens
   if (PRO_SCREENS.has(name)) {
     const labels = {
@@ -5603,8 +5609,9 @@ async function signIn() {
 
 async function completeSignup() {
   if (!_isSignupMode) {
-    // Existing user just picking a plan — go straight to app
-    enterApp(); return;
+    // Existing user just picking a plan — wait for onAuthStateChange to call enterApp()
+    // Do NOT call enterApp() without a verified session
+    return;
   }
 
   const name     = document.getElementById('signup-name')?.value.trim();
@@ -5631,6 +5638,10 @@ async function completeSignup() {
 
   // If session is null, email confirmation is required
   if (!data.session) {
+    // Save the plan intent so we can resume after email confirmation
+    if (selectedPlan === 'pro') {
+      localStorage.setItem('rw_pending_plan', 'pro');
+    }
     // Show confirmation message on top of current screen
     const errEl2 = document.getElementById('signup-error');
     if (errEl2) {
@@ -5683,8 +5694,23 @@ async function startStripeCheckout(userId, email, name) {
       body: JSON.stringify({ userId, email, customerName: name, plan: 'pro' })
     });
     const { url } = await res.json();
-    if (url) { window.location.href = url; } else { enterApp(); }
-  } catch { enterApp(); }
+    if (url) {
+      window.location.href = url;
+    } else {
+      showToast('Could not start checkout. Please try upgrading from inside the app.', 'error');
+      // If user is already authenticated, let them into the app as free
+      if (_currentUser) { /* already in app */ } else { enterApp(null, null); }
+    }
+  } catch (err) {
+    console.error('Stripe checkout error:', err);
+    showToast('Payment setup failed. You can upgrade anytime from inside the app.', 'error');
+    // If user has a valid session, let them in as free tier
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (session?.user) {
+      const { data: profile } = await _supabase.from('profiles').select('*').eq('id', session.user.id).single();
+      enterApp(session.user, profile);
+    }
+  }
 }
 
 async function openBillingPortal() {
@@ -5708,6 +5734,13 @@ async function signOut() {
 }
 
 function enterApp(user, profile) {
+  // Safety: never allow entry without a real authenticated user
+  if (!user) {
+    document.getElementById('app-shell').style.display = 'none';
+    document.getElementById('auth-login').style.display = 'flex';
+    return;
+  }
+
   _currentUser = user;
   _currentProfile = profile;
   document.querySelectorAll('.auth-overlay').forEach(el => el.style.display = 'none');
@@ -5724,21 +5757,20 @@ function enterApp(user, profile) {
   document.querySelectorAll('.user-name-display').forEach(el => el.textContent = displayName);
 
   // Update plan badge
-  const plan = profile?.plan || 'free';
+  const userPlan = profile?.plan || 'free';
   document.querySelectorAll('.plan-badge').forEach(el => {
-    el.textContent = plan === 'pro' ? 'Pro' : 'Free';
+    el.textContent = userPlan === 'pro' ? 'Pro' : 'Free';
   });
 
-  // Load real data
-  loadUserData();
-
   // Update sidebar plan badge
-  const plan = _currentProfile?.plan || 'free';
-  document.getElementById('sidebar-plan-label').textContent = plan === 'pro' ? 'PRO' : 'FREE';
-  if (plan === 'pro') {
+  document.getElementById('sidebar-plan-label').textContent = userPlan === 'pro' ? 'PRO' : 'FREE';
+  if (userPlan === 'pro') {
     const bar = document.getElementById('free-limit-bar');
     if (bar) bar.style.display = 'none';
   }
+
+  // Load real data
+  loadUserData();
 }
 
 // ── SUPABASE DATA LOADING ──
@@ -5960,11 +5992,37 @@ function populateTenantPropertyDropdown() {
 }
 
 // ── AUTH STATE LISTENER ──
-// Runs on every page load — redirects to login if no session
+// Immediately enforce login wall before any async code runs
+(function() {
+  const shell = document.getElementById('app-shell');
+  const login = document.getElementById('auth-login');
+  if (shell) shell.style.display = 'none';
+  if (login) login.style.display = 'flex';
+})();
+
+// Fallback: if Supabase hasn't responded in 4s, force login screen
+let _authResolved = false;
+setTimeout(() => {
+  if (!_authResolved) {
+    document.getElementById('app-shell').style.display = 'none';
+    document.getElementById('auth-login').style.display = 'flex';
+  }
+}, 4000);
+
 _supabase.auth.onAuthStateChange(async (event, session) => {
+  _authResolved = true;
   if (session?.user) {
     const { data: profile } = await _supabase
       .from('profiles').select('*').eq('id', session.user.id).single();
+
+    // If user signed up for Pro but had to confirm email first, resume Stripe checkout
+    const pendingPlan = localStorage.getItem('rw_pending_plan');
+    if (pendingPlan === 'pro' && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+      localStorage.removeItem('rw_pending_plan');
+      await startStripeCheckout(session.user.id, session.user.email, profile?.full_name || '');
+      return;
+    }
+
     enterApp(session.user, profile);
   } else {
     // No session — show login screen
